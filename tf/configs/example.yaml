@@ -36,7 +36,7 @@ model:
   filters: 64
   residual_blocks: 6
   se_ratio: 2                          # Squeeze Excite structural network architecture.
-  policy: 'attention'                  # attention policy fields:
+  policy: 'convolution'                # attention policy fields:
   pol_embedding_size: 64               # embedding vector size
   pol_encoder_layers: 1                # number of intermediate attention layers in the policy head
   pol_encoder_heads: 4                 # number of attention heads in encoder layers
