@@ -68,11 +68,15 @@ import unittest
 import gzip
 from select import select
 
+V8_VERSION = struct.pack('i', 8)
+V7_VERSION = struct.pack('i', 7)
 V6_VERSION = struct.pack('i', 6)
 V5_VERSION = struct.pack('i', 5)
 CLASSICAL_INPUT = struct.pack('i', 1)
 V4_VERSION = struct.pack('i', 4)
 V3_VERSION = struct.pack('i', 3)
+V8_STRUCT_STRING = '4si7432s832sBBBBBBBbfffffffffffffffIHH4Hf'
+V7_STRUCT_STRING = '4s7432s832sBBBBBBBbfffff'
 V6_STRUCT_STRING = '4si7432s832sBBBBBBBbfffffffffffffffIHH4H'
 V5_STRUCT_STRING = '4si7432s832sBBBBBBBbfffffff'
 V4_STRUCT_STRING = '4s7432s832sBBBBBBBbffff'
@@ -242,6 +246,8 @@ class ChunkParserInner:
         struct.Struct doesn't pickle, so it needs to be separately
         constructed in workers.
         """
+        self.v8_struct = struct.Struct(V8_STRUCT_STRING)
+        self.v7_struct = struct.Struct(V7_STRUCT_STRING)
         self.v6_struct = struct.Struct(V6_STRUCT_STRING)
         self.v5_struct = struct.Struct(V5_STRUCT_STRING)
         self.v4_struct = struct.Struct(V4_STRUCT_STRING)
@@ -303,7 +309,7 @@ class ChunkParserInner:
          root_d, best_d, root_m, best_m, plies_left, result_q, result_d,
          played_q, played_d, played_m, orig_q, orig_d, orig_m, visits,
          played_idx, best_idx, reserved1, reserved2, reserved3,
-         reserved4) = self.v6_struct.unpack(content)
+         reserved4, elo) = self.v8_struct.unpack(content)
         """
         v5 struct format was (8308 bytes total)
             int32 version (4 bytes)
@@ -359,7 +365,8 @@ class ChunkParserInner:
                             self.flat_planes[0] + \
                             self.flat_planes[0] + \
                             self.flat_planes[stm]
-        elif input_format == 3 or input_format == 4 or input_format == 132 or input_format == 5 or input_format == 133:
+        elif input_format == 3 or input_format == 4 or input_format == 132 or input_format == 5 \
+                or input_format == 133 or input_format == 7:
             # Each inner array has to be reversed as these fields are in opposite endian to the planes data.
             them_ooo_bytes = reverse_expand_bits(them_ooo)
             us_ooo_bytes = reverse_expand_bits(us_ooo)
@@ -386,7 +393,7 @@ class ChunkParserInner:
 
         assert len(planes) == ((8 * 13 * 1 + 8 * 1 * 1) * 8 * 8 * 4)
 
-        if ver == V6_VERSION:
+        if ver == V6_VERSION or ver == V8_VERSION:
             winner = struct.pack('fff', 0.5 * (1.0 - result_d + result_q),
                                  result_d, 0.5 * (1.0 - result_d - result_q))
         else:
@@ -400,7 +407,7 @@ class ChunkParserInner:
         assert -1.0 <= best_q <= 1.0 and 0.0 <= best_d <= 1.0
         best_q = struct.pack('fff', best_q_w, best_d, best_q_l)
 
-        return (planes, probs, winner, best_q, plies_left)
+        return (planes, probs, winner, best_q, plies_left, elo)
 
     def sample_record(self, chunkdata):
         """
@@ -409,7 +416,11 @@ class ChunkParserInner:
         diff focus may also skip some records.
         """
         version = chunkdata[0:4]
-        if version == V6_VERSION:
+        if version == V8_VERSION:
+            record_size = self.v8_struct.size
+        if version == V7_VERSION:
+            record_size = self.v7_struct.size
+        elif version == V6_VERSION:
             record_size = self.v6_struct.size
         elif version == V5_VERSION:
             record_size = self.v5_struct.size
@@ -427,20 +438,27 @@ class ChunkParserInner:
                     continue  # Skip this record.
 
             record = chunkdata[i:i + record_size]
+
+            if version == V7_VERSION:
+                elo = chunkdata[i + record_size - 4:i + record_size]
+                record = chunkdata[i:i + record_size - 4]
+            else:
+                elo = 4 * b'\x00'
+
             # for earlier versions, append fake bytes to record to maintain size
             if version == V3_VERSION:
                 # add 16 bytes of fake root_q, best_q, root_d, best_d to match V4 format
                 record += 16 * b'\x00'
-            if version == V3_VERSION or version == V4_VERSION:
+            if version == V3_VERSION or version == V4_VERSION or version == V7_VERSION:
                 # add 12 bytes of fake root_m, best_m, plies_left to match V5 format
                 record += 12 * b'\x00'
                 # insert 4 bytes of classical input format tag to match v5 format
                 record = record[:4] + CLASSICAL_INPUT + record[4:]
-            if version == V3_VERSION or version == V4_VERSION or version == V5_VERSION:
+            if version == V3_VERSION or version == V4_VERSION or version == V5_VERSION or version == V7_VERSION:
                 # add 48 byes of fake result_q, result_d etc
                 record += 48 * b'\x00'
 
-            if version == V6_VERSION:
+            if version == V6_VERSION or version == V8_VERSION:
                 # diff focus code, peek at best_q, orig_q and pol_kld from record (unpacks as tuple with one item)
                 best_q = struct.unpack('f', record[8284:8288])[0]
                 orig_q = struct.unpack('f', record[8328:8332])[0]
@@ -457,6 +475,7 @@ class ChunkParserInner:
                     if thresh_p < 1.0 and random.random() > thresh_p:
                         continue
 
+            record += elo
             yield record
 
     def single_file_gen(self, filename):
@@ -464,7 +483,11 @@ class ChunkParserInner:
             with gzip.open(filename, 'rb') as chunk_file:
                 version = chunk_file.read(4)
                 chunk_file.seek(0)
-                if version == V6_VERSION:
+                if version == V8_VERSION:
+                    record_size = self.v8_struct.size
+                elif version == V7_VERSION:
+                    record_size = self.v7_struct.size
+                elif version == V6_VERSION:
                     record_size = self.v6_struct.size
                 elif version == V5_VERSION:
                     record_size = self.v5_struct.size
@@ -514,7 +537,7 @@ class ChunkParserInner:
         Read v6 records from child workers, shuffle, and yield
         records.
         """
-        sbuff = sb.ShuffleBuffer(self.v6_struct.size, self.shuffle_size)
+        sbuff = sb.ShuffleBuffer(self.v8_struct.size, self.shuffle_size)
         while len(self.readers):
             for r in self.readers:
                 try:

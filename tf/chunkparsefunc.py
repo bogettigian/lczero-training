@@ -18,7 +18,7 @@
 import tensorflow as tf
 
 
-def parse_function(planes, probs, winner, q, plies_left):
+def parse_function(planes, probs, winner, q, plies_left, elo):
     """
     Convert unpacked record batches to tensors for tensorflow training
     """
@@ -33,5 +33,6 @@ def parse_function(planes, probs, winner, q, plies_left):
     winner = tf.reshape(winner, (-1, 3))
     q = tf.reshape(q, (-1, 3))
     plies_left = tf.reshape(plies_left, (-1, 1))
+    elo = tf.reshape(elo, (-1, 1))
 
-    return (planes, probs, winner, q, plies_left)
+    return (planes, probs, winner, q, plies_left, elo)
