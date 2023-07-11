@@ -331,6 +331,7 @@ class ChunkParserInner:
             float32 root_m (4 bytes)
             float32 best_m (4 bytes)
             float32 plies_left (4 bytes)
+            float32 elo (4 bytes)
         """
         # v3/4 data sometimes has a useful value in dep_ply_count (now invariance_info),
         # so copy that over if the new ply_count is not populated.
@@ -347,6 +348,8 @@ class ChunkParserInner:
         if input_format > 3:
             rule50_divisor = 100.0
         rule50_plane = struct.pack('f', rule50_count / rule50_divisor) * 64
+
+        elo_plane = struct.pack('f', elo) * 64
 
         if input_format == 1:
             middle_planes = self.flat_planes[us_ooo] + \
@@ -388,10 +391,11 @@ class ChunkParserInner:
         planes = planes.tobytes() + \
                  middle_planes + \
                  rule50_plane + \
+                 elo_plane + \
                  aux_plus_6_plane + \
                  self.flat_planes[1]
 
-        assert len(planes) == ((8 * 13 * 1 + 8 * 1 * 1) * 8 * 8 * 4)
+        assert len(planes) == ((8 * 13 * 1 + 9 * 1 * 1) * 8 * 8 * 4)
 
         if ver == V6_VERSION or ver == V8_VERSION:
             winner = struct.pack('fff', 0.5 * (1.0 - result_d + result_q),
@@ -407,7 +411,7 @@ class ChunkParserInner:
         assert -1.0 <= best_q <= 1.0 and 0.0 <= best_d <= 1.0
         best_q = struct.pack('fff', best_q_w, best_d, best_q_l)
 
-        return (planes, probs, winner, best_q, plies_left, elo)
+        return (planes, probs, winner, best_q, plies_left)
 
     def sample_record(self, chunkdata):
         """
@@ -659,7 +663,7 @@ class ChunkParserTest(unittest.TestCase):
         data = next(batchgen)
 
         batch = (np.reshape(np.frombuffer(data[0], dtype=np.float32),
-                            (batch_size, 112, 64)),
+                            (batch_size, 113, 64)),
                  np.reshape(np.frombuffer(data[1], dtype=np.int32),
                             (batch_size, 1858)),
                  np.reshape(np.frombuffer(data[2], dtype=np.float32),

@@ -379,7 +379,7 @@ class TFProcess:
 
     def init_net(self):
         self.l2reg = tf.keras.regularizers.l2(l=0.5 * (0.0001))
-        input_var = tf.keras.Input(shape=(112, 8, 8))
+        input_var = tf.keras.Input(shape=(113, 8, 8))
         outputs = self.construct_net(input_var)
         self.model = tf.keras.Model(inputs=input_var, outputs=outputs)
 
@@ -677,7 +677,7 @@ class TFProcess:
             if weight.shape.ndims == 4:
                 # Rescale rule50 related weights as clients do not normalize the input.
                 if weight.name == 'input/conv2d/kernel:0' and self.net.pb.format.network_format.input < pb.NetworkFormat.INPUT_112_WITH_CANONICALIZATION_HECTOPLIES:
-                    num_inputs = 112
+                    num_inputs = 113
                     # 50 move rule is the 110th input, or 109 starting from 0.
                     rule50_input = 109
                     for i in range(len(new_weight)):
