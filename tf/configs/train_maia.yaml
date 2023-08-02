@@ -10,7 +10,6 @@ dataset:
   input_test: './../../../data/chunk/test/'
 
 training:
-    precision: 'half'
     batch_size: 1024                   # training batch
     num_batch_splits: 1
     test_steps: 2000                   # eval test set values after this many steps
