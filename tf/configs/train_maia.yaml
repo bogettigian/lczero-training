@@ -5,6 +5,7 @@ gpu: 0                                 # gpu id to process on
 
 dataset:
   num_chunks: 100000                   # newest nof chunks to parse
+  train_ratio: 0.90                    # trainingset ratio
   input_train: './../../../data/chunk/train/'
   input_test: './../../../data/chunk/test/'
 
