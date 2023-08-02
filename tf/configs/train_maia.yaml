@@ -8,6 +8,7 @@ dataset:
   input_test: './../../../data/chunk/test/'
 
 training:
+    num_chunks: 100000                 # newest nof chunks to parse
     precision: 'half'
     batch_size: 1024                   # training batch
     num_batch_splits: 1
