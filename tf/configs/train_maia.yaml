@@ -1,0 +1,46 @@
+%YAML 1.2
+---
+name: 'kb1-64x6'                       # ideally no spaces
+gpu: 0                                 # gpu id to process on
+
+dataset:
+  input_train: './../../../data/chunk/train/'
+  input_test: './../../../data/chunk/test/'
+
+training:
+    precision: 'half'
+    batch_size: 1024                   # training batch
+    num_batch_splits: 1
+    test_steps: 2000                   # eval test set values after this many steps
+    train_avg_report_steps: 50         # training reports its average values after this many steps.
+    total_steps: 400000                # terminate after these steps
+    checkpoint_steps: 10000            # optional frequency for checkpointing before finish
+    shuffle_size: 250000               # size of the shuffle buffer
+    lr_values:                         # list of learning rates
+        - 0.1
+        - 0.01
+        - 0.001
+        - 0.0001
+    lr_boundaries:                     # list of boundaries
+        - 80000
+        - 200000
+        - 360000
+    policy_loss_weight: 1.0            # weight of policy loss
+    value_loss_weight: 1.0             # weight of value loss
+    moves_left_loss_weight: 1.0        # weight of moves-left loss
+    path: './../../../data/network'    # network storage dir
+
+model:
+  filters: 64
+  residual_blocks: 6
+  se_ratio: 8                          # Squeeze Excite structural network architecture.
+  policy: 'convolution'                # attention policy fields:
+  pol_embedding_size: 64               # embedding vector size
+  pol_encoder_layers: 1                # number of intermediate attention layers in the policy head
+  pol_encoder_heads: 4                 # number of attention heads in encoder layers
+  pol_encoder_d_model: 64              # size of the Q, K, & V vectors in encoder layers -- divisible by encoder_heads
+  pol_encoder_dff: 128                 # size of the largest dense layer in encoder block feed-forward network
+  policy_d_model: 64                   # size of the query and key vectors in final attention layer
+  value: 'wdl'
+  moves_left: 'v1'
+...
