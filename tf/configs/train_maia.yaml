@@ -4,11 +4,11 @@ name: 'kb1-64x6'                       # ideally no spaces
 gpu: 0                                 # gpu id to process on
 
 dataset:
+  num_chunks: 100000                   # newest nof chunks to parse
   input_train: './../../../data/chunk/train/'
   input_test: './../../../data/chunk/test/'
 
 training:
-    num_chunks: 100000                 # newest nof chunks to parse
     precision: 'half'
     batch_size: 1024                   # training batch
     num_batch_splits: 1
