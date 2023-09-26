@@ -349,6 +349,7 @@ class ChunkParserInner:
             rule50_divisor = 100.0
         rule50_plane = struct.pack('f', rule50_count / rule50_divisor) * 64
 
+        elo = 0.0
         elo_plane = struct.pack('f', elo) * 64
 
         if input_format == 1:
@@ -422,7 +423,7 @@ class ChunkParserInner:
         version = chunkdata[0:4]
         if version == V8_VERSION:
             record_size = self.v8_struct.size
-        if version == V7_VERSION:
+        elif version == V7_VERSION:
             record_size = self.v7_struct.size
         elif version == V6_VERSION:
             record_size = self.v6_struct.size
