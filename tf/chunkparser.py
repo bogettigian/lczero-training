@@ -349,8 +349,8 @@ class ChunkParserInner:
             rule50_divisor = 100.0
         rule50_plane = struct.pack('f', rule50_count / rule50_divisor) * 64
 
-        elo = 0.0
-        elo_plane = struct.pack('f', elo) * 64
+        print(elo)
+        elo_plane = struct.pack('f', elo / 4000) * 64
 
         if input_format == 1:
             middle_planes = self.flat_planes[us_ooo] + \
